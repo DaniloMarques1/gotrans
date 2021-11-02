@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 )
@@ -16,6 +17,25 @@ func Execute() {
 		log.Fatal(err)
 	}
 	log.Printf("Local addr = %v\n", localAddr)
+	socket, err := net.Listen("tcp", localAddr+":5000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		conn, err := socket.Accept()
+		if err != nil {
+			log.Fatal(err)
+		}
+		// it is our intention (at least for now) to hanlde onde connection at a time
+		handleConn(conn)
+	}
+}
+
+// TODO get the file name
+// open a file based on file name
+// copy the rest of the bytes in the conn to file
+func handleConn(conn net.Conn) {
+	fmt.Println("Handle conn...")
 }
 
 func getLocalAddr() (string, error) {
