@@ -3,8 +3,11 @@ package sender
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -51,7 +54,30 @@ func (sender *Sender) Send() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(file.Name())
+	conn, err := net.Dial("tcp", sender.receiverAddr)
+	if err != nil {
+		log.Fatal(err) // TODO
+	}
+	_, err = conn.Write([]byte(fmt.Sprintf("%v\n", sender.PathNameOnly())))
+	if err != nil {
+		log.Fatal(err) // TODO
+	}
+	writtenBytes, err := io.Copy(conn, file)
+	if err != nil {
+		log.Fatal(err) // TODO
+	}
+	response, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		log.Fatal(err) // TODO
+	}
+	response = strings.Replace(response, "\n", "", -1)
+	readBytes, err := strconv.Atoi(response)
+	if err != nil {
+		log.Fatal(err) // wont happen
+	}
+	if int64(readBytes) != writtenBytes {
+		log.Printf("There was a problem sending the file\n")
+	}
 }
 
 // returns only the file name of the given path
