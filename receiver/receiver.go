@@ -17,12 +17,14 @@ const (
 	InvalidHeader = "Invalid header"
 )
 
+const PORT = 5000
+
 func Execute() {
 	localAddr, err := getLocalAddr()
 	if err != nil {
 		log.Fatal(err)
 	}
-	socket, err := net.Listen("tcp", localAddr+":5000")
+	socket, err := net.Listen("tcp", fmt.Sprintf("%v:%v", localAddr, PORT))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,6 +35,7 @@ func Execute() {
 	}
 
 	// it is our intention (at least for now) to handle one connection at a time
+	// basically, a receiver will receive from only one sender at a time
 	handleConn(conn)
 }
 
@@ -43,7 +46,11 @@ func handleConn(conn net.Conn) {
 	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 2))
 	n, err := conn.Read(buffer)
 	for err == nil && n > 0 {
-		n, err = conn.Read(buffer)
+		localBuffer := make([]byte, 2048)
+		n, err = conn.Read(localBuffer)
+		if n > 0 {
+			buffer = append(buffer, localBuffer...)
+		}
 	}
 
 	var header string
@@ -55,7 +62,10 @@ func handleConn(conn net.Conn) {
 			break
 		}
 	}
-	fileName, fileSize, _ := parseHeader(header)
+	fileName, fileSize, err := parseHeader(header)
+	if err != nil {
+		log.Fatal(err)
+	}
 	buffer = buffer[:fileSize]
 
 	localFile, err := os.Create(fmt.Sprintf("%v/%v", path, fileName))
@@ -63,7 +73,10 @@ func handleConn(conn net.Conn) {
 		log.Fatal(err)
 	}
 	defer localFile.Close()
-	localFile.Write(buffer)
+	_, err = localFile.Write(buffer)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	conn.Write([]byte("OK\n")) // ignoring error
 }
@@ -96,8 +109,8 @@ func getPathFromUser(senderAddr string) string {
 }
 
 func parseHeader(header string) (string, int, error) {
-	header = strings.Replace(header, "\n", "", -1)
 	splited := strings.Split(header, ";")
+	fmt.Println(splited)
 	if len(splited) != 2 {
 		return "", 0, errors.New(InvalidHeader)
 	}

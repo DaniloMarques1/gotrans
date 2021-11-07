@@ -67,13 +67,15 @@ func (sender *Sender) Send() {
 	content := fmt.Sprintf("%s;%d\n%s",
 		fileInfo.Name(), fileInfo.Size(), string(bytes))
 
+	log.Printf("Name = %v", fileInfo.Name())
+	log.Printf("Size = %v", fileInfo.Size())
+
 	conn, err := net.Dial("tcp", sender.receiverAddr)
 	if err != nil {
 		log.Fatal(err) // TODO
 	}
 	defer conn.Close()
 
-	// writing the header with the file name and size
 	if _, err = conn.Write([]byte(content)); err != nil {
 		log.Fatal(err) // TODO
 	}
