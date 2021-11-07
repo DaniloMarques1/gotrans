@@ -104,7 +104,7 @@ func getLocalAddr() (string, error) {
 
 func getPathFromUser(senderAddr string) string {
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print("Type in the path in which you'd like to store the file:")
+	fmt.Println("Type in the path in which you'd like to store the file:")
 	fmt.Print("> ")
 	var path string
 	if scanner.Scan() {
