@@ -7,8 +7,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
-	"strings"
 )
 
 type Sender struct {
@@ -54,37 +52,35 @@ func (sender *Sender) Send() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bytes, err := io.ReadAll(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	content := fmt.Sprintf("%s;%d\n%s",
+		fileInfo.Name(), fileInfo.Size(), string(bytes))
+
 	conn, err := net.Dial("tcp", sender.receiverAddr)
 	if err != nil {
 		log.Fatal(err) // TODO
 	}
-	_, err = conn.Write([]byte(fmt.Sprintf("%v\n", sender.PathNameOnly())))
-	if err != nil {
+	defer conn.Close()
+
+	// writing the header with the file name and size
+	if _, err = conn.Write([]byte(content)); err != nil {
 		log.Fatal(err) // TODO
 	}
-	writtenBytes, err := io.Copy(conn, file)
-	if err != nil {
-		log.Fatal(err) // TODO
-	}
+
 	response, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err) // TODO
 	}
-	response = strings.Replace(response, "\n", "", -1)
-	readBytes, err := strconv.Atoi(response)
-	if err != nil {
-		log.Fatal(err) // wont happen
-	}
-	if int64(readBytes) != writtenBytes {
-		log.Printf("There was a problem sending the file\n")
-	}
-}
-
-// returns only the file name of the given path
-func (sender *Sender) PathNameOnly() string {
-	idx := strings.LastIndex(sender.path, "/")
-	if idx == -1 {
-		return sender.path
-	}
-	return sender.path[idx+1:]
+	log.Printf("Response = %v\n", response)
 }
