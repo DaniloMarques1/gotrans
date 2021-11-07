@@ -30,14 +30,14 @@ func Execute() {
 
 func getPathAndAddrFromUser() (string, string) {
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("You need to provide the receiver ip address (ip:port)")
+	fmt.Println("You need to provide the receiver ip address (ip:port) make sure the receiver is waiting:")
 	fmt.Print("> ")
 	var address string
 	if scanner.Scan() {
 		address = scanner.Text()
 	}
 
-	fmt.Println("Provide the file path you want to transfer")
+	fmt.Println("Provide the file path you want to transfer:")
 	fmt.Print("> ")
 	var path string
 	if scanner.Scan() {
@@ -64,11 +64,9 @@ func (sender *Sender) Send() {
 		log.Fatal(err)
 	}
 
+	fmt.Printf("Sending file %v to computer %v\n", fileInfo.Name(), sender.receiverAddr)
 	content := fmt.Sprintf("%s;%d\n%s",
 		fileInfo.Name(), fileInfo.Size(), string(bytes))
-
-	log.Printf("Name = %v", fileInfo.Name())
-	log.Printf("Size = %v", fileInfo.Size())
 
 	conn, err := net.Dial("tcp", sender.receiverAddr)
 	if err != nil {
@@ -80,9 +78,9 @@ func (sender *Sender) Send() {
 		log.Fatal(err) // TODO
 	}
 
-	response, err := bufio.NewReader(conn).ReadString('\n')
+	_, err = bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err) // TODO
 	}
-	log.Printf("Response = %v\n", response)
+	fmt.Println("File transfered successfully")
 }

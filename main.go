@@ -19,7 +19,8 @@ const (
 
 // errors
 const (
-	InvalidInput = "Invalid input"
+	InvalidInput  = "Invalid input"
+	InvalidChoice = "You can only select 1 for sender or 2 for receiver"
 )
 
 func main() {
@@ -34,6 +35,7 @@ func main() {
 		receiver.Execute()
 	} else {
 		// TODO
+		log.Fatal(errors.New(InvalidChoice))
 	}
 }
 

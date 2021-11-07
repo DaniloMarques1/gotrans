@@ -29,6 +29,7 @@ func Execute() {
 		log.Fatal(err)
 	}
 
+	fmt.Println("Waiting to receive file...")
 	conn, err := socket.Accept()
 	if err != nil {
 		log.Fatal(err)
@@ -41,6 +42,8 @@ func Execute() {
 
 func handleConn(conn net.Conn) {
 	defer conn.Close()
+	fmt.Printf("Receiving file from %v\n", conn.RemoteAddr())
+
 	path := getPathFromUser(conn.RemoteAddr().String())
 	buffer := make([]byte, 2048)
 	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 2))
@@ -67,6 +70,7 @@ func handleConn(conn net.Conn) {
 		log.Fatal(err)
 	}
 	buffer = buffer[:fileSize]
+	fmt.Printf("Storing the file %v in path %v\n", fileName, path)
 
 	localFile, err := os.Create(fmt.Sprintf("%v/%v", path, fileName))
 	if err != nil {
@@ -77,6 +81,7 @@ func handleConn(conn net.Conn) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("File stored successfully")
 
 	conn.Write([]byte("OK\n")) // ignoring error
 }
@@ -98,9 +103,8 @@ func getLocalAddr() (string, error) {
 
 func getPathFromUser(senderAddr string) string {
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Printf("%v is trying to send you a file \n", senderAddr)
-	fmt.Println("Type in the path in which you'd like to store the file")
-	fmt.Printf("> ")
+	fmt.Print("Type in the path in which you'd like to store the file:")
+	fmt.Print("> ")
 	var path string
 	if scanner.Scan() {
 		path = scanner.Text()
@@ -110,7 +114,6 @@ func getPathFromUser(senderAddr string) string {
 
 func parseHeader(header string) (string, int, error) {
 	splited := strings.Split(header, ";")
-	fmt.Println(splited)
 	if len(splited) != 2 {
 		return "", 0, errors.New(InvalidHeader)
 	}
