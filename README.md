@@ -11,4 +11,5 @@ something like `192.168.1.5`.
 
 ### TODO
 
-* [ ] Only workds with text files, we need to support binary files too
+* [X] Only workds with text files, we need to support binary files too
+* [ ] 
