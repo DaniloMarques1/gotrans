@@ -46,7 +46,7 @@ func handleConn(conn net.Conn) {
 
 	path := getPathFromUser(conn.RemoteAddr().String())
 	buffer := make([]byte, 2048)
-	conn.SetReadDeadline(time.Now().Add(time.Millisecond * 2))
+	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	n, err := conn.Read(buffer)
 	for err == nil && n > 0 {
 		localBuffer := make([]byte, 2048)
@@ -65,14 +65,15 @@ func handleConn(conn net.Conn) {
 			break
 		}
 	}
-	fileName, fileSize, err := parseHeader(header)
+	fileName, fileSize, fileMode, err := parseHeader(header)
 	if err != nil {
 		log.Fatal(err)
 	}
 	buffer = buffer[:fileSize]
 	fmt.Printf("Storing the file %v in path %v\n", fileName, path)
 
-	localFile, err := os.Create(fmt.Sprintf("%v/%v", path, fileName))
+	localFile, err := os.OpenFile(fmt.Sprintf("%v/%v", path, fileName),
+		os.O_CREATE|os.O_WRONLY, fileMode)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,16 +113,22 @@ func getPathFromUser(senderAddr string) string {
 	return path
 }
 
-func parseHeader(header string) (string, int, error) {
+func parseHeader(header string) (string, int, os.FileMode, error) {
 	splited := strings.Split(header, ";")
-	if len(splited) != 2 {
-		return "", 0, errors.New(InvalidHeader)
+	if len(splited) != 3 {
+		return "", 0, 0, errors.New(InvalidHeader)
 	}
 	fileSize := splited[1]
 	size, err := strconv.Atoi(fileSize)
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
+	fileMode := splited[2]
+	mode, err := strconv.Atoi(fileMode)
+	if err != nil {
+		return "", 0, 0, err
+	}
+
 	fileName := splited[0]
-	return fileName, size, nil
+	return fileName, size, os.FileMode(mode), nil
 }

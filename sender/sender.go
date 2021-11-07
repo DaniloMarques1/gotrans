@@ -58,15 +58,20 @@ func (sender *Sender) Send() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fileName := fileInfo.Name()
+	fileSize := fileInfo.Size()
+	fileMode := fileInfo.Mode()
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Sending file %v to computer %v\n", fileInfo.Name(), sender.receiverAddr)
-	content := fmt.Sprintf("%s;%d\n%s",
-		fileInfo.Name(), fileInfo.Size(), string(bytes))
+	fmt.Printf("Sending file %v with %v bytes to computer %v\n",
+		fileName, fileSize, sender.receiverAddr)
+
+	content := fmt.Sprintf("%s;%d;%d\n%s",
+		fileName, fileMode, fileSize, string(bytes))
 
 	conn, err := net.Dial("tcp", sender.receiverAddr)
 	if err != nil {
