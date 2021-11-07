@@ -81,11 +81,7 @@ func (sender *Sender) Send() {
 		log.Fatal(err) // TODO
 	}
 
-	bytes, err := io.ReadAll(file)
-	if err != nil {
-		log.Fatal(err) // TODO
-	}
-	if _, err := conn.Write(bytes); err != nil {
+	if _, err := io.Copy(conn, file); err != nil {
 		log.Fatal(err) // TODO
 	}
 

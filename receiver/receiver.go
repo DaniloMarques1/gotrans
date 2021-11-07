@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -67,12 +68,7 @@ func handleConn(conn net.Conn) {
 	}
 	infoFile.path = path
 
-	buffer := make([]byte, infoFile.size)
-	if _, err = conn.Read(buffer); err != nil {
-		log.Fatal(err)
-	}
 	fmt.Printf("Storing the file %v in path %v\n", infoFile.name, infoFile.path)
-
 	localFile, err := os.OpenFile(infoFile.GetFullPath(),
 		os.O_CREATE|os.O_WRONLY, infoFile.mode)
 	if err != nil {
@@ -80,10 +76,10 @@ func handleConn(conn net.Conn) {
 	}
 	defer localFile.Close()
 
-	_, err = localFile.Write(buffer)
-	if err != nil {
+	if _, err := io.CopyN(localFile, conn, int64(infoFile.size)); err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println("File stored successfully")
 
 	conn.Write([]byte("OK\n")) // ignoring error
