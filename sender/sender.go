@@ -54,6 +54,12 @@ func (sender *Sender) Send() {
 	}
 	defer file.Close()
 
+	conn, err := net.Dial("tcp", sender.receiverAddr)
+	if err != nil {
+		log.Fatal(err) // TODO
+	}
+	defer conn.Close()
+
 	fileInfo, err := file.Stat()
 	if err != nil {
 		log.Fatal(err)
@@ -62,27 +68,28 @@ func (sender *Sender) Send() {
 	fileSize := fileInfo.Size()
 	fileMode := fileInfo.Mode()
 
-	bytes, err := io.ReadAll(file)
-	if err != nil {
+	fmt.Printf("Sending file %v, with %v bytes and mode %d to computer %v\n",
+		fileName, fileSize, fileMode, sender.receiverAddr)
+
+	header := fmt.Sprintf("%s;%d;%d\n", fileName, fileSize, fileMode)
+	if _, err := conn.Write([]byte(header)); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Sending file %v with %v bytes to computer %v\n",
-		fileName, fileSize, sender.receiverAddr)
+	// read the header response
+	if _, err = bufio.NewReader(conn).ReadString('\n'); err != nil {
+		log.Fatal(err) // TODO
+	}
 
-	content := fmt.Sprintf("%s;%d;%d\n%s",
-		fileName, fileMode, fileSize, string(bytes))
-
-	conn, err := net.Dial("tcp", sender.receiverAddr)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		log.Fatal(err) // TODO
 	}
-	defer conn.Close()
-
-	if _, err = conn.Write([]byte(content)); err != nil {
+	if _, err := conn.Write(bytes); err != nil {
 		log.Fatal(err) // TODO
 	}
 
+	// read the body(file) response
 	_, err = bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err) // TODO

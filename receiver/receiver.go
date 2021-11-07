@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -18,6 +17,17 @@ const (
 )
 
 const PORT = 5000
+
+type InfoFile struct {
+	name string
+	size int
+	path string
+	mode os.FileMode
+}
+
+func (infoFile *InfoFile) GetFullPath() string {
+	return fmt.Sprintf("%v/%v", infoFile.path, infoFile.name)
+}
 
 func Execute() {
 	localAddr, err := getLocalAddr()
@@ -43,41 +53,33 @@ func Execute() {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 	fmt.Printf("Receiving file from %v\n", conn.RemoteAddr())
-
 	path := getPathFromUser(conn.RemoteAddr().String())
-	buffer := make([]byte, 2048)
-	conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-	n, err := conn.Read(buffer)
-	for err == nil && n > 0 {
-		localBuffer := make([]byte, 2048)
-		n, err = conn.Read(localBuffer)
-		if n > 0 {
-			buffer = append(buffer, localBuffer...)
-		}
-	}
 
-	var header string
-	for idx, char := range buffer {
-		if char != '\n' {
-			header += string(char)
-		} else {
-			buffer = buffer[idx+1:]
-			break
-		}
-	}
-	fileName, fileSize, fileMode, err := parseHeader(header)
+	header, err := bufio.NewReader(conn).ReadString('\n')
 	if err != nil {
 		log.Fatal(err)
 	}
-	buffer = buffer[:fileSize]
-	fmt.Printf("Storing the file %v in path %v\n", fileName, path)
+	conn.Write([]byte("OK\n")) //
 
-	localFile, err := os.OpenFile(fmt.Sprintf("%v/%v", path, fileName),
-		os.O_CREATE|os.O_WRONLY, fileMode)
+	infoFile, err := parseHeader(header)
+	if err != nil {
+		log.Fatal(err)
+	}
+	infoFile.path = path
+
+	buffer := make([]byte, infoFile.size)
+	if _, err = conn.Read(buffer); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Storing the file %v in path %v\n", infoFile.name, infoFile.path)
+
+	localFile, err := os.OpenFile(infoFile.GetFullPath(),
+		os.O_CREATE|os.O_WRONLY, infoFile.mode)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer localFile.Close()
+
 	_, err = localFile.Write(buffer)
 	if err != nil {
 		log.Fatal(err)
@@ -113,22 +115,29 @@ func getPathFromUser(senderAddr string) string {
 	return path
 }
 
-func parseHeader(header string) (string, int, os.FileMode, error) {
+func parseHeader(header string) (*InfoFile, error) {
+	header = strings.Replace(header, "\n", "", -1)
 	splited := strings.Split(header, ";")
 	if len(splited) != 3 {
-		return "", 0, 0, errors.New(InvalidHeader)
+		return nil, errors.New(InvalidHeader)
 	}
 	fileSize := splited[1]
 	size, err := strconv.Atoi(fileSize)
 	if err != nil {
-		return "", 0, 0, err
+		return nil, err
 	}
 	fileMode := splited[2]
 	mode, err := strconv.Atoi(fileMode)
 	if err != nil {
-		return "", 0, 0, err
+		return nil, err
+	}
+	fileName := splited[0]
+
+	infoFile := InfoFile{
+		name: fileName,
+		size: size,
+		mode: os.FileMode(mode),
 	}
 
-	fileName := splited[0]
-	return fileName, size, os.FileMode(mode), nil
+	return &infoFile, nil
 }
